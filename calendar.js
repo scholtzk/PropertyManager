@@ -39,7 +39,10 @@ document.addEventListener('DOMContentLoaded', function() {
           guest: r.guest_name || (r.guests && r.guests[0] && r.guests[0].name) || 'Guest',
           source: (r.custom_channel && r.custom_channel.name) || r.channel_type || 'Unknown',
           date: r.check_in_date,
-          nights: nights
+          nights: nights,
+          number_of_guests: r.number_of_guests,
+          number_of_adults: r.number_of_adults,
+          number_of_children: r.number_of_children
         };
       });
     } catch (e) {
@@ -187,9 +190,17 @@ document.addEventListener('DOMContentLoaded', function() {
       div.style.padding = '16px';
       div.style.marginBottom = '14px';
       div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)';
-      div.innerHTML = `<div style="display:flex; align-items:center; justify-content:space-between;">
-        <div><strong style="color:var(--primary); font-size:18px;">${booking.guest}</strong> <span style="color:#888; font-size:14px;">${booking.source}</span></div>
-        <span style="color:#1976d2; font-size:15px;">${booking.nights} night${booking.nights > 1 ? 's' : ''}</span>
+      // Show guest amount, adults, children
+      div.innerHTML = `<div style="display:flex; flex-direction:column; gap:6px;">
+        <div style="display:flex; align-items:center; justify-content:space-between;">
+          <div><strong style="color:var(--primary); font-size:18px;">${booking.guest}</strong> <span style="color:#888; font-size:14px;">${booking.source}</span></div>
+          <span style="color:#1976d2; font-size:15px;">${booking.nights} night${booking.nights > 1 ? 's' : ''}</span>
+        </div>
+        <div style="color:#444; font-size:15px; margin-left:2px;">
+          Guests: <strong>${booking.number_of_guests ?? '-'}</strong> &nbsp;|
+          Adults: <strong>${booking.number_of_adults ?? '-'}</strong> &nbsp;|
+          Children: <strong>${booking.number_of_children ?? '-'}</strong>
+        </div>
       </div>`;
       dayModalBookings.appendChild(div);
     });
