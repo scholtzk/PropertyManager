@@ -177,10 +177,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
   function renderDayModalBookings(dateStr) {
     let filtered = bookings.filter(b => b.date === dateStr);
+    console.log('Looking for bookings on:', dateStr);
     if (filtered.length === 0) {
       dayModalBookings.innerHTML = '<p style="color:#888; text-align:center;">No bookings for this day.</p>';
       return;
     }
+    console.log('Bookings for date', dateStr, filtered);
     dayModalBookings.innerHTML = '';
     filtered.forEach((booking) => {
       console.log('Rendering booking for date', dateStr, booking); // <-- Log each booking being shown
