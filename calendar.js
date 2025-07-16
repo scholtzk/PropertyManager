@@ -183,6 +183,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     dayModalBookings.innerHTML = '';
     filtered.forEach((booking) => {
+      console.log('Rendering booking for date', dateStr, booking); // <-- Log each booking being shown
       const div = document.createElement('div');
       div.className = 'booking-item';
       div.style.background = '#f8f9fa';
@@ -190,7 +191,6 @@ document.addEventListener('DOMContentLoaded', function() {
       div.style.padding = '16px';
       div.style.marginBottom = '14px';
       div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)';
-      // Show guest amount, adults, children
       div.innerHTML = `<div style="display:flex; flex-direction:column; gap:6px;">
         <div style="display:flex; align-items:center; justify-content:space-between;">
           <div><strong style="color:var(--primary); font-size:18px;">${booking.guest}</strong> <span style="color:#888; font-size:14px;">${booking.source}</span></div>
