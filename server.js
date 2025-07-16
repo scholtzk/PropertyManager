@@ -5,7 +5,7 @@ const cors = require('cors');
 const app = express();
 const PORT = process.env.PORT || 3000;
 const HOSTEX_API_KEY = process.env.HOSTEX_API_KEY || 'GO5Kxx5vb6SZPXrW7BAhJsomhx5gpgUxd2Trsmgh9FdxJETKyDy2A9YUNDbluzzm';
-const HOSTEX_API_URL = 'https://api.hostex.io/api/v1/bookings';
+const HOSTEX_API_URL = 'https://api.hostex.io/v3/reservations';
 
 app.use(cors());
 
@@ -13,8 +13,8 @@ app.get('/api/bookings', async (req, res) => {
   try {
     const response = await fetch(HOSTEX_API_URL, {
       headers: {
-        'Authorization': `Bearer ${HOSTEX_API_KEY}`,
-        'Content-Type': 'application/json'
+        'Hostex-Access-Token': HOSTEX_API_KEY,
+        'accept': 'application/json'
       }
     });
     if (!response.ok) {
