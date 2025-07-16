@@ -25,16 +25,23 @@ document.addEventListener('DOMContentLoaded', function() {
     try {
       const res = await fetch(PROXY_API_URL);
       if (!res.ok) throw new Error('Failed to fetch bookings');
-      const data = await res.json();
-      // Map API data to expected format
-      bookings = (data.bookings || data) // support both {bookings:[]} and []
-        .map(b => ({
-          id: b.id || b.booking_id,
-          guest: b.guest_name || b.guest || b.name || 'Guest',
-          source: b.channel || b.source || 'Unknown',
-          date: b.check_in || b.date || b.start_date,
-          nights: b.nights || b.length_of_stay || 1
-        }));
+      const apiData = await res.json();
+      // Hostex API returns { data: { reservations: [...] } }
+      const reservations = (apiData.data && apiData.data.reservations) ? apiData.data.reservations : [];
+      // Map reservations to expected format for calendar
+      bookings = reservations.map(r => {
+        // Calculate nights (difference in days between check-in and check-out)
+        const checkIn = new Date(r.check_in_date);
+        const checkOut = new Date(r.check_out_date);
+        const nights = Math.max(1, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
+        return {
+          id: r.reservation_code || r.stay_code,
+          guest: r.guest_name || (r.guests && r.guests[0] && r.guests[0].name) || 'Guest',
+          source: (r.custom_channel && r.custom_channel.name) || r.channel_type || 'Unknown',
+          date: r.check_in_date,
+          nights: nights
+        };
+      });
     } catch (e) {
       bmCalendar.innerHTML = `<div style='color:#d32f2f; text-align:center; padding:40px;'>Error loading bookings.<br>${e.message}</div>`;
       bookings = [];
