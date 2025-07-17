@@ -4,6 +4,16 @@ const fetch = require('node-fetch');
 const HOSTEX_API_KEY = functions.config().hostex.key || 'GO5Kxx5vb6SZPXrW7BAhJsomhx5gpgUxd2Trsmgh9FdxJETKyDy2A9YUNDbluzzm';
 const HOSTEX_API_URL = 'https://api.hostex.io/v3/reservations';
 
+// Helper to build query string
+function buildQuery(params) {
+  return (
+    '?' +
+    Object.entries(params)
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .join('&')
+  );
+}
+
 exports.bookings = functions.https.onRequest(async (req, res) => {
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET, POST');
@@ -13,17 +23,46 @@ exports.bookings = functions.https.onRequest(async (req, res) => {
     return;
   }
   try {
-    const response = await fetch(HOSTEX_API_URL, {
-      headers: {
-        'Hostex-Access-Token': HOSTEX_API_KEY,
-        'accept': 'application/json'
+    // Log the API key being used (for debugging only, remove after testing)
+    console.log('Using Hostex API Key:', HOSTEX_API_KEY);
+    // Set a wide date range (adjust as needed)
+    const startDate = req.query.start_check_in_date || '2025-01-01';
+    const endDate = req.query.end_check_in_date || '2025-12-31';
+    let allBookings = [];
+    let offset = 0;
+    const limit = 100;
+    let keepGoing = true;
+    while (keepGoing) {
+      const query = buildQuery({
+        start_check_in_date: startDate,
+        end_check_in_date: endDate,
+        limit,
+        offset
+      });
+      const apiUrl = HOSTEX_API_URL + query;
+      console.log('Fetching Hostex API URL:', apiUrl); // Log the exact API URL
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Hostex-Access-Token': HOSTEX_API_KEY,
+          'accept': 'application/json'
+        }
+      });
+      if (!response.ok) {
+        return res.status(response.status).json({ error: 'Failed to fetch from Hostex' });
       }
-    });
-    if (!response.ok) {
-      return res.status(response.status).json({ error: 'Failed to fetch from Hostex' });
+      const data = await response.json();
+      // Log the full API response for debugging
+      console.log('Hostex API raw response:', data);
+      const reservations = (data.data && data.data.reservations) ? data.data.reservations : [];
+      console.log('Reservations returned this page:', reservations.length); // Log number of bookings per page
+      allBookings = allBookings.concat(reservations);
+      if (reservations.length < limit) {
+        keepGoing = false;
+      } else {
+        offset += limit;
+      }
     }
-    const data = await response.json();
-    res.json(data);
+    res.json({ reservations: allBookings });
   } catch (err) {
     res.status(500).json({ error: 'Proxy error', details: err.message });
   }
