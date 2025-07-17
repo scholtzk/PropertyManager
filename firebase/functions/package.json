@@ -1,0 +1,12 @@
+{
+  "name": "functions",
+  "description": "Cloud Functions for Firebase backend for PropertyManager",
+  "engines": {
+    "node": "18"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "firebase-functions": "^4.0.0",
+    "node-fetch": "^2.6.7"
+  }
+}
