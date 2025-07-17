@@ -34,7 +34,7 @@ document.addEventListener('DOMContentLoaded', function() {
         const checkIn = new Date(r.check_in_date);
         const checkOut = new Date(r.check_out_date);
         const nights = Math.max(1, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
-        return {
+        const bookingObj = {
           id: r.reservation_code || r.stay_code,
           guest: r.guest_name || (r.guests && r.guests[0] && r.guests[0].name) || 'Guest',
           source: (r.custom_channel && r.custom_channel.name) || r.channel_type || 'Unknown',
@@ -44,6 +44,8 @@ document.addEventListener('DOMContentLoaded', function() {
           number_of_adults: r.number_of_adults,
           number_of_children: r.number_of_children
         };
+        console.log('Loaded booking:', bookingObj); // Log each booking as it's loaded
+        return bookingObj;
       });
     } catch (e) {
       bmCalendar.innerHTML = `<div style='color:#d32f2f; text-align:center; padding:40px;'>Error loading bookings.<br>${e.message}</div>`;
