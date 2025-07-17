@@ -25,9 +25,13 @@ exports.bookings = functions.https.onRequest(async (req, res) => {
   try {
     // Log the API key being used (for debugging only, remove after testing)
     console.log('Using Hostex API Key:', HOSTEX_API_KEY);
-    // Set a wide date range (adjust as needed)
-    const startDate = req.query.start_check_in_date || '2025-01-01';
-    const endDate = req.query.end_check_in_date || '2025-12-31';
+    // Calculate date range: from (current date - 1 month) to (current date + 180 days)
+    const now = new Date();
+    const startDateObj = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+    const endDateObj = new Date(now.getTime() + 180 * 24 * 60 * 60 * 1000);
+    const startDate = startDateObj.toISOString().slice(0, 10);
+    const endDate = endDateObj.toISOString().slice(0, 10);
+    console.log('Querying bookings from', startDate, 'to', endDate);
     let allBookings = [];
     let offset = 0;
     const limit = 100;
