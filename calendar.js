@@ -17,7 +17,7 @@ document.addEventListener('DOMContentLoaded', function() {
   let dayModalDate = null;
 
   // Use your Render proxy endpoint here (e.g., https://your-proxy.onrender.com/api/bookings)
-  const PROXY_API_URL = 'https://propertymanager-3osi.onrender.com/api/bookings'; // FIXED: now points to /api/bookings
+  const PROXY_API_URL = 'https://us-central1-property-manager-cf570.cloudfunctions.net/bookings'; // FIXED: now points to /api/bookings
 
   // Fetch bookings from proxy API
   async function fetchBookings() {
