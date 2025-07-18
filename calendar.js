@@ -54,12 +54,12 @@ document.addEventListener('DOMContentLoaded', function() {
     renderCalendar(calendarMonth, calendarYear);
   }
 
-  // Helper: get all dates for a booking (from check-in to day before check-out)
+  // Helper: get all dates for a booking (from check-in to check-out, inclusive)
   function getBookingDates(checkIn, checkOut) {
     const dates = [];
     let current = new Date(checkIn);
     const end = new Date(checkOut);
-    while (current < end) {
+    while (current <= end) { // include check-out date
       dates.push(current.toISOString().slice(0, 10));
       current.setDate(current.getDate() + 1);
     }
@@ -146,13 +146,14 @@ document.addEventListener('DOMContentLoaded', function() {
     // Build a map: date string -> booking info for that day
     const bookingMap = {};
     bookings.forEach(b => {
-      const allDates = getBookingDates(b.date, (new Date(b.date).getTime() + b.nights * 24 * 60 * 60 * 1000));
+      // The bar should start at check-in and end at check-out (inclusive)
+      const allDates = getBookingDates(b.date, b.check_out_date);
       allDates.forEach((dateStr, idx) => {
         if (!bookingMap[dateStr]) bookingMap[dateStr] = [];
         let type = 'middle';
-        if (idx === 0) type = 'start';
-        if (idx === allDates.length - 1) type = 'end';
-        if (allDates.length === 1) type = 'single';
+        if (idx === 0 && allDates.length === 1) type = 'single';
+        else if (idx === 0) type = 'start';
+        else if (idx === allDates.length - 1) type = 'end';
         bookingMap[dateStr].push({ ...b, type });
       });
     });
