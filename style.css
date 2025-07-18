@@ -89,6 +89,87 @@ h1 {
 #bm-calendar .calendar-cell:hover {
   background: #f0f4fa;
 }
+#bm-calendar .calendar-cell {
+  position: relative;
+  overflow: visible;
+  min-height: 70px;
+  padding-top: 4px;
+  padding-bottom: 4px;
+}
+.booking-bar {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  top: 28px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(25, 118, 210, 0.08);
+  z-index: 2;
+  transition: box-shadow 0.2s;
+}
+.booking-bar:hover {
+  box-shadow: 0 4px 16px rgba(25, 118, 210, 0.18);
+}
+.booking-bar.middle {
+  background: var(--primary, #1976d2);
+  border-radius: 8px;
+}
+.booking-bar.start {
+  background: linear-gradient(135deg, var(--primary, #1976d2) 60%, transparent 40%);
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.booking-bar.end {
+  background: linear-gradient(-45deg, var(--primary, #1976d2) 60%, transparent 40%);
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+.booking-bar.single {
+  background: none;
+  position: relative;
+  height: 24px;
+}
+.booking-bar.single .bar-triangle {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  top: 0;
+  left: 0;
+  z-index: 1;
+}
+.booking-bar.single .bar-triangle.start {
+  background: linear-gradient(135deg, var(--primary, #1976d2) 60%, transparent 40%);
+  border-top-left-radius: 8px;
+  border-bottom-left-radius: 8px;
+}
+.booking-bar.single .bar-triangle.end {
+  background: linear-gradient(-45deg, var(--primary, #1976d2) 60%, transparent 40%);
+  border-top-right-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+.booking-bar .bar-content {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  height: 100%;
+  padding: 0 6px;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.08);
+}
 /* Modal styles */
 .modal {
   display: none;
