@@ -54,6 +54,24 @@ document.addEventListener('DOMContentLoaded', function() {
     renderCalendar(calendarMonth, calendarYear);
   }
 
+  // Helper: get all dates for a booking (from check-in to day before check-out)
+  function getBookingDates(checkIn, checkOut) {
+    const dates = [];
+    let current = new Date(checkIn);
+    const end = new Date(checkOut);
+    while (current < end) {
+      dates.push(current.toISOString().slice(0, 10));
+      current.setDate(current.getDate() + 1);
+    }
+    return dates;
+  }
+
+  // Helper: get first name from full name
+  function getFirstName(name) {
+    if (!name) return '';
+    return name.split(' ')[0];
+  }
+
   function renderCalendar(month, year) {
     bmCalendar.innerHTML = '';
     // Header with month navigation
@@ -64,7 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
     header.style.gap = '24px';
     header.style.marginBottom = '18px';
     const prevBtn = document.createElement('button');
-    prevBtn.textContent = '←';
+    prevBtn.textContent = '\u2190';
     prevBtn.style.background = 'none';
     prevBtn.style.border = 'none';
     prevBtn.style.fontSize = '22px';
@@ -80,7 +98,7 @@ document.addEventListener('DOMContentLoaded', function() {
       renderCalendar(calendarMonth, calendarYear);
     };
     const nextBtn = document.createElement('button');
-    nextBtn.textContent = '→';
+    nextBtn.textContent = '\u2192';
     nextBtn.style.background = 'none';
     nextBtn.style.border = 'none';
     nextBtn.style.fontSize = '22px';
@@ -125,6 +143,19 @@ document.addEventListener('DOMContentLoaded', function() {
       grid.appendChild(emptyCell);
     }
     const today = new Date();
+    // Build a map: date string -> booking info for that day
+    const bookingMap = {};
+    bookings.forEach(b => {
+      const allDates = getBookingDates(b.date, (new Date(b.date).getTime() + b.nights * 24 * 60 * 60 * 1000));
+      allDates.forEach((dateStr, idx) => {
+        if (!bookingMap[dateStr]) bookingMap[dateStr] = [];
+        let type = 'middle';
+        if (idx === 0) type = 'start';
+        if (idx === allDates.length - 1) type = 'end';
+        if (allDates.length === 1) type = 'single';
+        bookingMap[dateStr].push({ ...b, type });
+      });
+    });
     for (let d = 1; d <= totalDays; d++) {
       const cell = document.createElement('div');
       cell.className = 'calendar-cell';
@@ -138,12 +169,79 @@ document.addEventListener('DOMContentLoaded', function() {
       if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
         cell.classList.add('today');
       }
-      // Highlight if booking exists
+      // Booking bar logic
       const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const hasBooking = bookings.some(b => b.date === dateStr);
-      if (hasBooking) {
-        cell.classList.add('has-booking');
-      }
+      const bookingsForDay = bookingMap[dateStr] || [];
+      bookingsForDay.forEach(booking => {
+        // Bar container
+        const bar = document.createElement('div');
+        bar.className = 'booking-bar';
+        bar.style.position = 'absolute';
+        bar.style.left = '2px';
+        bar.style.right = '2px';
+        bar.style.top = '22px';
+        bar.style.height = '22px';
+        bar.style.display = 'flex';
+        bar.style.alignItems = 'center';
+        bar.style.justifyContent = 'center';
+        bar.style.fontSize = '13px';
+        bar.style.fontWeight = 'bold';
+        bar.style.color = '#fff';
+        bar.style.overflow = 'hidden';
+        bar.style.zIndex = 2;
+        // Bar style by type
+        if (booking.type === 'start') {
+          bar.style.background = 'linear-gradient(135deg, var(--primary, #1976d2) 50%, transparent 50%)';
+          bar.style.borderTopLeftRadius = '8px';
+          bar.style.borderBottomLeftRadius = '8px';
+        } else if (booking.type === 'end') {
+          bar.style.background = 'linear-gradient(-45deg, var(--primary, #1976d2) 50%, transparent 50%)';
+          bar.style.borderTopRightRadius = '8px';
+          bar.style.borderBottomRightRadius = '8px';
+        } else if (booking.type === 'middle') {
+          bar.style.background = 'var(--primary, #1976d2)';
+        } else if (booking.type === 'single') {
+          // Both triangles: overlay two divs
+          bar.style.background = 'none';
+          bar.style.position = 'relative';
+          const tri1 = document.createElement('div');
+          tri1.style.position = 'absolute';
+          tri1.style.left = 0;
+          tri1.style.top = 0;
+          tri1.style.width = '100%';
+          tri1.style.height = '100%';
+          tri1.style.background = 'linear-gradient(135deg, var(--primary, #1976d2) 50%, transparent 50%)';
+          tri1.style.borderTopLeftRadius = '8px';
+          tri1.style.borderBottomLeftRadius = '8px';
+          const tri2 = document.createElement('div');
+          tri2.style.position = 'absolute';
+          tri2.style.left = 0;
+          tri2.style.top = 0;
+          tri2.style.width = '100%';
+          tri2.style.height = '100%';
+          tri2.style.background = 'linear-gradient(-45deg, var(--primary, #1976d2) 50%, transparent 50%)';
+          tri2.style.borderTopRightRadius = '8px';
+          tri2.style.borderBottomRightRadius = '8px';
+          bar.appendChild(tri1);
+          bar.appendChild(tri2);
+        }
+        // Bar content (guest first name and person icon + number)
+        if (booking.type !== 'single') {
+          bar.innerHTML = `<span style='display:flex;align-items:center;gap:6px;'><span>${getFirstName(booking.guest)}</span> <span style='font-size:15px;'>👤</span> <span>${booking.number_of_guests ?? '-'}</span></span>`;
+        } else {
+          // For single, overlay content above triangles
+          const content = document.createElement('span');
+          content.style.position = 'relative';
+          content.style.zIndex = 2;
+          content.style.display = 'flex';
+          content.style.alignItems = 'center';
+          content.style.justifyContent = 'center';
+          content.style.gap = '6px';
+          content.innerHTML = `<span>${getFirstName(booking.guest)}</span> <span style='font-size:15px;'>👤</span> <span>${booking.number_of_guests ?? '-'}</span>`;
+          bar.appendChild(content);
+        }
+        cell.appendChild(bar);
+      });
       cell.appendChild(dayNumber);
       cell.onmouseover = () => {
         if (!cell.classList.contains('today'))
