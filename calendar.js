@@ -26,8 +26,8 @@ document.addEventListener('DOMContentLoaded', function() {
       const res = await fetch(PROXY_API_URL);
       if (!res.ok) throw new Error('Failed to fetch bookings');
       const apiData = await res.json();
-      // Hostex API returns { data: { reservations: [...] } }
-      const reservations = (apiData.data && apiData.data.reservations) ? apiData.data.reservations : [];
+      // Hostex API returns { reservations: [...] }
+      const reservations = apiData.reservations || [];
       // Map reservations to expected format for calendar
       bookings = reservations.map(r => {
         // Calculate nights (difference in days between check-in and check-out)
