@@ -173,19 +173,17 @@ document.addEventListener('DOMContentLoaded', function() {
       // Booking bar logic
       const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
       const bookingsForDay = bookingMap[dateStr] || [];
+      console.log(`[DEBUG] Cell ${dateStr}: found ${bookingsForDay.length} bookings`);
       bookingsForDay.forEach(booking => {
         // Bar container
         const bar = document.createElement('div');
         bar.className = 'booking-bar';
-        // Add type class for CSS (start, middle, end, single)
         bar.classList.add(booking.type);
-        // Add channel class for color
         if (booking.source.toLowerCase().includes('airbnb')) {
           bar.classList.add('airbnb');
         } else if (booking.source.toLowerCase().includes('booking.com')) {
           bar.classList.add('bookingcom');
         }
-        // Position bar at bottom 3/5 of cell
         bar.style.bottom = '6px';
         bar.style.top = '';
         bar.style.height = '42px';
@@ -202,15 +200,17 @@ document.addEventListener('DOMContentLoaded', function() {
         bar.style.overflow = 'hidden';
         bar.style.zIndex = 2;
         bar.style.position = 'absolute';
-        // Add a small gap between bookings
         bar.style.marginTop = '4px';
-        // Bar content (guest first name and person icon + number)
         const content = document.createElement('span');
         content.className = 'bar-content';
         content.innerHTML = `<span>${getFirstName(booking.guest)}</span> <span style='font-size:15px;'>👤</span> <span>${booking.number_of_guests ?? '-'}</span>`;
         bar.appendChild(content);
         cell.appendChild(bar);
+        console.log(`[DEBUG] Appended bar for booking id ${booking.id} (${booking.type}) on ${dateStr}`);
       });
+      if (bookingsForDay.length === 0) {
+        console.log(`[DEBUG] No bookings to render for ${dateStr}`);
+      }
       cell.appendChild(dayNumber);
       cell.onmouseover = () => {
         if (!cell.classList.contains('today'))
