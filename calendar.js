@@ -176,11 +176,22 @@ document.addEventListener('DOMContentLoaded', function() {
         // Bar container
         const bar = document.createElement('div');
         bar.className = 'booking-bar';
-        bar.style.position = 'absolute';
-        bar.style.left = '2px';
-        bar.style.right = '2px';
-        bar.style.top = '22px';
-        bar.style.height = '22px';
+        // Add type class for CSS (start, middle, end, single)
+        bar.classList.add(booking.type);
+        // Add channel class for color
+        if (booking.source.toLowerCase().includes('airbnb')) {
+          bar.classList.add('airbnb');
+        } else if (booking.source.toLowerCase().includes('booking.com')) {
+          bar.classList.add('bookingcom');
+        }
+        // Position bar at bottom 3/5 of cell
+        bar.style.bottom = '6px';
+        bar.style.top = '';
+        bar.style.height = '42px';
+        bar.style.left = '6px';
+        bar.style.right = '6px';
+        bar.style.marginTop = '';
+        bar.style.marginBottom = '2px';
         bar.style.display = 'flex';
         bar.style.alignItems = 'center';
         bar.style.justifyContent = 'center';
@@ -189,57 +200,14 @@ document.addEventListener('DOMContentLoaded', function() {
         bar.style.color = '#fff';
         bar.style.overflow = 'hidden';
         bar.style.zIndex = 2;
-        // Bar style by type
-        if (booking.type === 'start') {
-          bar.style.background = 'linear-gradient(135deg, var(--primary, #1976d2) 50%, transparent 50%)';
-          bar.style.borderTopLeftRadius = '8px';
-          bar.style.borderBottomLeftRadius = '8px';
-        } else if (booking.type === 'end') {
-          bar.style.background = 'linear-gradient(-45deg, var(--primary, #1976d2) 50%, transparent 50%)';
-          bar.style.borderTopRightRadius = '8px';
-          bar.style.borderBottomRightRadius = '8px';
-        } else if (booking.type === 'middle') {
-          bar.style.background = 'var(--primary, #1976d2)';
-        } else if (booking.type === 'single') {
-          // Both triangles: overlay two divs
-          bar.style.background = 'none';
-          bar.style.position = 'relative';
-          const tri1 = document.createElement('div');
-          tri1.style.position = 'absolute';
-          tri1.style.left = 0;
-          tri1.style.top = 0;
-          tri1.style.width = '100%';
-          tri1.style.height = '100%';
-          tri1.style.background = 'linear-gradient(135deg, var(--primary, #1976d2) 50%, transparent 50%)';
-          tri1.style.borderTopLeftRadius = '8px';
-          tri1.style.borderBottomLeftRadius = '8px';
-          const tri2 = document.createElement('div');
-          tri2.style.position = 'absolute';
-          tri2.style.left = 0;
-          tri2.style.top = 0;
-          tri2.style.width = '100%';
-          tri2.style.height = '100%';
-          tri2.style.background = 'linear-gradient(-45deg, var(--primary, #1976d2) 50%, transparent 50%)';
-          tri2.style.borderTopRightRadius = '8px';
-          tri2.style.borderBottomRightRadius = '8px';
-          bar.appendChild(tri1);
-          bar.appendChild(tri2);
-        }
+        bar.style.position = 'absolute';
+        // Add a small gap between bookings
+        bar.style.marginTop = '4px';
         // Bar content (guest first name and person icon + number)
-        if (booking.type !== 'single') {
-          bar.innerHTML = `<span style='display:flex;align-items:center;gap:6px;'><span>${getFirstName(booking.guest)}</span> <span style='font-size:15px;'>👤</span> <span>${booking.number_of_guests ?? '-'}</span></span>`;
-        } else {
-          // For single, overlay content above triangles
-          const content = document.createElement('span');
-          content.style.position = 'relative';
-          content.style.zIndex = 2;
-          content.style.display = 'flex';
-          content.style.alignItems = 'center';
-          content.style.justifyContent = 'center';
-          content.style.gap = '6px';
-          content.innerHTML = `<span>${getFirstName(booking.guest)}</span> <span style='font-size:15px;'>👤</span> <span>${booking.number_of_guests ?? '-'}</span>`;
-          bar.appendChild(content);
-        }
+        const content = document.createElement('span');
+        content.className = 'bar-content';
+        content.innerHTML = `<span>${getFirstName(booking.guest)}</span> <span style='font-size:15px;'>👤</span> <span>${booking.number_of_guests ?? '-'}</span>`;
+        bar.appendChild(content);
         cell.appendChild(bar);
       });
       cell.appendChild(dayNumber);
