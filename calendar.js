@@ -1,289 +1,504 @@
 // Booking Manager Calendar JS
 // Renders a styled calendar and shows bookings per day (placeholder data for now)
 
-document.addEventListener('DOMContentLoaded', function() {
-  // Calendar state
-  let calendarMonth = (new Date()).getMonth();
-  let calendarYear = (new Date()).getFullYear();
+class SVGCalendar {
+    constructor(containerId) {
+        this.container = document.getElementById(containerId);
+        this.currentDate = new Date();
+        this.bookings = [];
+        this.cellWidth = 180;
+        this.cellHeight = 120;
+        this.headerHeight = 60;
+        this.dayHeaderHeight = 50;
+        this.margin = 40;
+        this.arrowWidth = 20;
+        
+        this.init();
+    }
+
+    init() {
+        this.render(); // Render empty calendar first
+        this.loadBookings(); // Then load and render bookings
+    }
+
+    async loadBookings() {
+        try {
+            console.log('Loading bookings from Firebase Cloud Function...');
+            const response = await fetch('https://us-central1-property-manager-cf570.cloudfunctions.net/bookings');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log('API Response:', data);
+            
+            // Handle different response formats
   let bookings = [];
-
-  // DOM elements
-  const bmCalendar = document.getElementById('bm-calendar');
-  const todayBtn = document.getElementById('bm-today-btn');
-  const dayModal = document.getElementById('bm-day-modal');
-  const dayModalTitle = document.getElementById('bm-day-modal-title');
-  const dayModalBookings = document.getElementById('bm-day-modal-bookings');
-  const dayModalClose = document.getElementById('bm-day-modal-close');
-  let dayModalDate = null;
-
-  // Use your Render proxy endpoint here (e.g., https://your-proxy.onrender.com/api/bookings)
-  const PROXY_API_URL = 'https://us-central1-property-manager-cf570.cloudfunctions.net/bookings'; // FIXED: now points to /api/bookings
-
-  // Fetch bookings from proxy API
-  async function fetchBookings() {
-    bmCalendar.innerHTML = '<div style="text-align:center; color:#888; padding:40px;">Loading bookings...</div>';
-    try {
-      const res = await fetch(PROXY_API_URL);
-      if (!res.ok) throw new Error('Failed to fetch bookings');
-      const apiData = await res.json();
-      // Hostex API returns { reservations: [...] }
-      const reservations = apiData.reservations || [];
-      // Map reservations to expected format for calendar
-      bookings = reservations.map(r => {
-        // Calculate nights (difference in days between check-in and check-out)
-        const checkIn = new Date(r.check_in_date);
-        const checkOut = new Date(r.check_out_date);
-        const nights = Math.max(1, Math.round((checkOut - checkIn) / (1000 * 60 * 60 * 24)));
-        const bookingObj = {
-          id: r.reservation_code || r.stay_code,
-          guest: r.guest_name || (r.guests && r.guests[0] && r.guests[0].name) || 'Guest',
-          source: (r.custom_channel && r.custom_channel.name) || r.channel_type || 'Unknown',
-          date: r.check_in_date,
-          nights: nights,
-          number_of_guests: r.number_of_guests,
-          number_of_adults: r.number_of_adults,
-          number_of_children: r.number_of_children
-        };
-        console.log('Loaded booking:', bookingObj); // Log each booking as it's loaded
-        return bookingObj;
-      });
-    } catch (e) {
-      bmCalendar.innerHTML = `<div style='color:#d32f2f; text-align:center; padding:40px;'>Error loading bookings.<br>${e.message}</div>`;
-      bookings = [];
-    }
-    renderCalendar(calendarMonth, calendarYear);
-  }
-
-  // Helper: get all dates for a booking (from check-in to check-out, inclusive)
-  function getBookingDates(checkIn, checkOut) {
-    const dates = [];
-    let current = new Date(checkIn);
-    const end = new Date(checkOut);
-    while (current <= end) { // include check-out date
-      dates.push(current.toISOString().slice(0, 10));
-      current.setDate(current.getDate() + 1);
-    }
-    return dates;
-  }
-
-  // Helper: get first name from full name
-  function getFirstName(name) {
-    if (!name) return '';
-    return name.split(' ')[0];
-  }
-
-  function renderCalendar(month, year) {
-    bmCalendar.innerHTML = '';
-    // Header with month navigation
-    const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.justifyContent = 'center';
-    header.style.alignItems = 'center';
-    header.style.gap = '24px';
-    header.style.marginBottom = '18px';
-    const prevBtn = document.createElement('button');
-    prevBtn.textContent = '\u2190';
-    prevBtn.style.background = 'none';
-    prevBtn.style.border = 'none';
-    prevBtn.style.fontSize = '22px';
-    prevBtn.style.cursor = 'pointer';
-    prevBtn.style.color = 'var(--primary)';
-    prevBtn.onclick = () => {
-      if (month === 0) {
-        calendarMonth = 11;
-        calendarYear = year - 1;
-      } else {
-        calendarMonth = month - 1;
-      }
-      renderCalendar(calendarMonth, calendarYear);
-    };
-    const nextBtn = document.createElement('button');
-    nextBtn.textContent = '\u2192';
-    nextBtn.style.background = 'none';
-    nextBtn.style.border = 'none';
-    nextBtn.style.fontSize = '22px';
-    nextBtn.style.cursor = 'pointer';
-    nextBtn.style.color = 'var(--primary)';
-    nextBtn.onclick = () => {
-      if (month === 11) {
-        calendarMonth = 0;
-        calendarYear = year + 1;
-      } else {
-        calendarMonth = month + 1;
-      }
-      renderCalendar(calendarMonth, calendarYear);
-    };
-    const monthYear = document.createElement('div');
-    monthYear.textContent = `${new Date(year, month).toLocaleString('default', { month: 'long' })} ${year}`;
-    monthYear.style.fontWeight = 'bold';
-    monthYear.style.color = 'var(--primary)';
-    monthYear.style.fontSize = '20px';
-    header.appendChild(prevBtn);
-    header.appendChild(monthYear);
-    header.appendChild(nextBtn);
-    bmCalendar.appendChild(header);
-    // Calendar grid
-    const grid = document.createElement('div');
-    grid.className = 'calendar-grid';
-    // Day headers
-    const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-    days.forEach(day => {
-      const dayHeader = document.createElement('div');
-      dayHeader.className = 'calendar-header';
-      dayHeader.textContent = day;
-      grid.appendChild(dayHeader);
-    });
-    // Get first day and total days
-    const firstDay = new Date(year, month, 1).getDay();
-    const totalDays = new Date(year, month + 1, 0).getDate();
-    for (let i = 0; i < firstDay; i++) {
-      const emptyCell = document.createElement('div');
-      emptyCell.className = 'calendar-cell';
-      emptyCell.style.background = '#f4f6fa';
-      grid.appendChild(emptyCell);
-    }
-    const today = new Date();
-    // Build a map: date string -> booking info for that day
-    const bookingMap = {};
-    bookings.forEach(b => {
-      // The bar should start at check-in and end at check-out (inclusive)
-      const allDates = getBookingDates(b.date, b.check_out_date);
-      allDates.forEach((dateStr, idx) => {
-        if (!bookingMap[dateStr]) bookingMap[dateStr] = [];
-        let type = 'middle';
-        if (idx === 0 && allDates.length === 1) type = 'single';
-        else if (idx === 0) type = 'start';
-        else if (idx === allDates.length - 1) type = 'end';
-        bookingMap[dateStr].push({ ...b, type });
-      });
-    });
-    for (let d = 1; d <= totalDays; d++) {
-      const cell = document.createElement('div');
-      cell.className = 'calendar-cell';
-      const dayNumber = document.createElement('div');
-      dayNumber.textContent = d;
-      dayNumber.style.fontWeight = 'bold';
-      dayNumber.style.marginBottom = '5px';
-      dayNumber.style.fontSize = '16px';
-      dayNumber.style.textAlign = 'center';
-      // Highlight today
-      if (d === today.getDate() && month === today.getMonth() && year === today.getFullYear()) {
-        cell.classList.add('today');
-      }
-      // Booking bar logic
-      const dateStr = `${year}-${String(month+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-      const bookingsForDay = bookingMap[dateStr] || [];
-      console.log(`[DEBUG] Cell ${dateStr}: found ${bookingsForDay.length} bookings`);
-      bookingsForDay.forEach(booking => {
-        // Bar container
-        const bar = document.createElement('div');
-        bar.className = 'booking-bar';
-        bar.classList.add(booking.type);
-        if (booking.source.toLowerCase().includes('airbnb')) {
-          bar.classList.add('airbnb');
-        } else if (booking.source.toLowerCase().includes('booking.com')) {
-          bar.classList.add('bookingcom');
+            if (data.reservations) {
+                bookings = data.reservations;
+            } else if (data.bookings) {
+                bookings = data.bookings;
+            } else if (Array.isArray(data)) {
+                bookings = data;
+            } else {
+                console.error('Unexpected API response format:', data);
+                return;
+            }
+            
+            this.bookings = bookings.map(booking => ({
+                ...booking,
+                check_in_date: new Date(booking.check_in_date),
+                check_out_date: new Date(booking.check_out_date),
+                guest_first_name: booking.guest_name ? booking.guest_name.split(' ')[0] : 'Guest',
+                channel: booking.channel_type || booking.channel
+            }));
+            
+            console.log('Bookings loaded:', this.bookings.length);
+            console.log('Sample booking:', this.bookings[0]);
+            
+            // Re-render after loading bookings
+            this.render();
+            
+        } catch (error) {
+            console.error('Error loading bookings:', error);
+            this.showError('Failed to load bookings. Please check if the server is running.');
         }
-        bar.style.bottom = '6px';
-        bar.style.top = '';
-        bar.style.height = '42px';
-        bar.style.left = '6px';
-        bar.style.right = '6px';
-        bar.style.marginTop = '';
-        bar.style.marginBottom = '2px';
-        bar.style.display = 'flex';
-        bar.style.alignItems = 'center';
-        bar.style.justifyContent = 'center';
-        bar.style.fontSize = '13px';
-        bar.style.fontWeight = 'bold';
-        bar.style.color = '#fff';
-        bar.style.overflow = 'hidden';
-        bar.style.zIndex = 2;
-        bar.style.position = 'absolute';
-        bar.style.marginTop = '4px';
-        const content = document.createElement('span');
-        content.className = 'bar-content';
-        content.innerHTML = `<span>${getFirstName(booking.guest)}</span> <span style='font-size:15px;'>👤</span> <span>${booking.number_of_guests ?? '-'}</span>`;
-        bar.appendChild(content);
-        cell.appendChild(bar);
-        console.log(`[DEBUG] Appended bar for booking id ${booking.id} (${booking.type}) on ${dateStr}`);
-      });
-      if (bookingsForDay.length === 0) {
-        console.log(`[DEBUG] No bookings to render for ${dateStr}`);
-      }
-      cell.appendChild(dayNumber);
-      cell.onmouseover = () => {
-        if (!cell.classList.contains('today'))
-          cell.style.backgroundColor = '#f0f4fa';
-      };
-      cell.onmouseout = () => {
-        cell.style.backgroundColor = '';
-      };
-      // Open day modal on click
-      cell.onclick = (e) => {
-        e.stopPropagation();
-        openDayModal(dateStr);
-      };
-      grid.appendChild(cell);
     }
-    bmCalendar.appendChild(grid);
-  }
 
-  function openDayModal(dateStr) {
-    dayModalDate = dateStr;
-    dayModal.style.display = 'flex';
-    dayModalTitle.textContent = `Bookings for ${dateStr}`;
-    renderDayModalBookings(dateStr);
-  }
-  function closeDayModal() {
-    dayModal.style.display = 'none';
-    dayModalDate = null;
-  }
-  dayModalClose.addEventListener('click', closeDayModal);
-  dayModal.addEventListener('click', (e) => {
-    if (e.target === dayModal) closeDayModal();
-  });
-
-  function renderDayModalBookings(dateStr) {
-    let filtered = bookings.filter(b => b.date === dateStr);
-    console.log('Looking for bookings on:', dateStr);
-    if (filtered.length === 0) {
-      dayModalBookings.innerHTML = '<p style="color:#888; text-align:center;">No bookings for this day.</p>';
-      return;
+    render() {
+        this.container.innerHTML = '';
+        
+        const svgElem = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svgElem.setAttribute('class', 'calendar-svg');
+        svgElem.setAttribute('viewBox', `0 0 ${this.getCalendarWidth()} ${this.getCalendarHeight()}`);
+        
+        // Add header
+        this.renderHeader(svgElem);
+        
+        // Add day headers
+        this.renderDayHeaders(svgElem);
+        
+        // Add grid
+        this.renderGrid(svgElem);
+        
+        // Add booking bars
+        this.renderBookings(svgElem);
+        
+        // Add day numbers (after bookings, so they are on top)
+        this.renderDayNumbers(svgElem);
+        
+        this.container.appendChild(svgElem);
     }
-    console.log('Bookings for date', dateStr, filtered);
-    dayModalBookings.innerHTML = '';
-    filtered.forEach((booking) => {
-      console.log('Rendering booking for date', dateStr, booking); // <-- Log each booking being shown
-      const div = document.createElement('div');
-      div.className = 'booking-item';
-      div.style.background = '#f8f9fa';
-      div.style.borderRadius = '8px';
-      div.style.padding = '16px';
-      div.style.marginBottom = '14px';
-      div.style.boxShadow = '0 1px 4px rgba(0,0,0,0.04)';
-      div.innerHTML = `<div style="display:flex; flex-direction:column; gap:6px;">
-        <div style="display:flex; align-items:center; justify-content:space-between;">
-          <div><strong style="color:var(--primary); font-size:18px;">${booking.guest}</strong> <span style="color:#888; font-size:14px;">${booking.source}</span></div>
-          <span style="color:#1976d2; font-size:15px;">${booking.nights} night${booking.nights > 1 ? 's' : ''}</span>
-        </div>
-        <div style="color:#444; font-size:15px; margin-left:2px;">
-          Guests: <strong>${booking.number_of_guests ?? '-'}</strong> &nbsp;|
-          Adults: <strong>${booking.number_of_adults ?? '-'}</strong> &nbsp;|
-          Children: <strong>${booking.number_of_children ?? '-'}</strong>
-        </div>
-      </div>`;
-      dayModalBookings.appendChild(div);
+
+    getCalendarWidth() {
+        return 7 * this.cellWidth + 2 * this.margin;
+    }
+
+    getCalendarHeight() {
+        const weeks = this.getWeeksInMonth();
+        return this.headerHeight + this.dayHeaderHeight + weeks * this.cellHeight + 2 * this.margin;
+    }
+
+    getWeeksInMonth() {
+        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+        const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
+        const startWeek = Math.floor((firstDay.getDay() + 6) % 7);
+        const totalDays = lastDay.getDate();
+        return Math.ceil((startWeek + totalDays) / 7);
+    }
+
+    renderHeader(svg) {
+        const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                           'July', 'August', 'September', 'October', 'November', 'December'];
+        
+        const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        text.setAttribute('x', this.getCalendarWidth() / 2);
+        text.setAttribute('y', this.headerHeight / 2 + 8);
+        text.setAttribute('class', 'calendar-header');
+        text.textContent = `${monthNames[this.currentDate.getMonth()]} ${this.currentDate.getFullYear()}`;
+        
+        svg.appendChild(text);
+    }
+
+    renderDayHeaders(svg) {
+        const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+        
+        days.forEach((day, index) => {
+            const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+            text.setAttribute('x', this.margin + index * this.cellWidth + this.cellWidth / 2);
+            text.setAttribute('y', this.headerHeight + this.dayHeaderHeight / 2 + 5);
+            text.setAttribute('class', 'day-header');
+            text.textContent = day;
+            
+            svg.appendChild(text);
+        });
+    }
+
+    renderGrid(svg) {
+        const weeks = this.getWeeksInMonth();
+        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+        const startWeek = Math.floor((firstDay.getDay() + 6) % 7);
+        const today = new Date();
+        
+        for (let week = 0; week < weeks; week++) {
+            for (let day = 0; day < 7; day++) {
+                const cellIndex = week * 7 + day;
+                const dayNumber = cellIndex - startWeek + 1;
+                
+                if (dayNumber > 0 && dayNumber <= new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0).getDate()) {
+                    const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+                    rect.setAttribute('x', this.margin + day * this.cellWidth);
+                    rect.setAttribute('y', this.headerHeight + this.dayHeaderHeight + week * this.cellHeight);
+                    rect.setAttribute('width', this.cellWidth);
+                    rect.setAttribute('height', this.cellHeight);
+                    
+                    // Check if this is today
+                    const isToday = dayNumber === today.getDate() && 
+                                   this.currentDate.getMonth() === today.getMonth() && 
+                                   this.currentDate.getFullYear() === today.getFullYear();
+                    
+                    rect.setAttribute('class', isToday ? 'calendar-cell today-cell' : 'calendar-cell');
+                    
+                    svg.appendChild(rect);
+                }
+            }
+        }
+    }
+
+    renderDayNumbers(svg) {
+        const weeks = this.getWeeksInMonth();
+        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+        const startWeek = Math.floor((firstDay.getDay() + 6) % 7);
+        
+        for (let week = 0; week < weeks; week++) {
+            for (let day = 0; day < 7; day++) {
+                const cellIndex = week * 7 + day;
+                const dayNumber = cellIndex - startWeek + 1;
+                
+                if (dayNumber > 0 && dayNumber <= new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0).getDate()) {
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', this.margin + day * this.cellWidth + 15);
+                    text.setAttribute('y', this.headerHeight + this.dayHeaderHeight + week * this.cellHeight + 30);
+                    text.setAttribute('class', 'day-number');
+                    text.textContent = dayNumber;
+                    
+                    svg.appendChild(text);
+                }
+            }
+        }
+    }
+
+    renderBookings(svg) {
+        this.bookings.forEach(booking => {
+            this.renderBookingBar(svg, booking);
+        });
+    }
+
+    renderBookingBar(svg, booking) {
+        const startPos = this.getBookingPosition(booking.check_in_date);
+        const endPos = this.getBookingPosition(booking.check_out_date);
+        if (!startPos || !endPos) return;
+
+        const { startCol, startRow } = startPos;
+        const { startCol: endCol, startRow: endRow } = endPos;
+
+        for (let row = startRow; row <= endRow; row++) {
+            let segStartCol, segEndCol;
+            if (row === startRow && row === endRow) {
+                segStartCol = startCol;
+                segEndCol = endCol;
+            } else if (row === startRow) {
+                segStartCol = startCol;
+                segEndCol = 6;
+            } else if (row === endRow) {
+                segStartCol = 0;
+                segEndCol = endCol;
+      } else {
+                segStartCol = 0;
+                segEndCol = 6;
+            }
+
+            // Calculate bar segment position and width
+            let barX, barWidth;
+            if (row === startRow) {
+                barX = this.margin + segStartCol * this.cellWidth + this.cellWidth / 3;
+                barWidth = (segEndCol - segStartCol + 1) * this.cellWidth - this.cellWidth / 1.5;
+            } else if (row === endRow) {
+                barX = this.margin;
+                barWidth = (segEndCol + 1) * this.cellWidth - this.cellWidth / 3;
+      } else {
+                barX = this.margin;
+                barWidth = 7 * this.cellWidth;
+            }
+            // Make the bar shorter and align it to the bottom of the cell
+            const barHeight = this.cellHeight - 50;
+            const barY = this.headerHeight + this.dayHeaderHeight + (row + 1) * this.cellHeight - barHeight + this.margin - this.margin;
+
+            // Determine slant type for this segment
+            let slantType = 'middle';
+            if (row === startRow && row === endRow) slantType = 'single';
+            else if (row === startRow) slantType = 'start';
+            else if (row === endRow) slantType = 'end';
+
+            // Create the booking bar shape
+            const barShape = this.createBookingBarSegmentShape(barX, barY, barWidth, barHeight, slantType);
+            const channelClass = this.getChannelClass(booking.channel);
+            barShape.setAttribute('class', `booking-bar ${channelClass}`);
+            barShape.addEventListener('click', () => this.showBookingModal(booking));
+            svg.appendChild(barShape);
+
+            // Only add text to the first segment (row)
+            if (row === startRow) {
+                this.addBookingText(svg, barX, barY, barWidth, barHeight, booking);
+            }
+        }
+    }
+
+    createBookingBarSegmentShape(x, y, width, height, slantType) {
+        const aw = this.cellWidth / 4; // Always half cell width for slant
+        let points;
+        if (slantType === 'single') {
+            // Single row: left slant increases bottom to top, right slant as before
+            points = `${x + aw},${y} ${x + width},${y} ${x + width - aw},${y + height} ${x},${y + height}`;
+        } else if (slantType === 'start') {
+            // First row: left slant increases bottom to top, right edge is full width
+            points = `${x + aw},${y} ${x + width},${y} ${x + width},${y + height} ${x},${y + height}`;
+        } else if (slantType === 'end') {
+            // Last row: left edge is full width, right slant ends at middle
+            points = `${x},${y} ${x + width},${y} ${x + width - aw},${y + height} ${x},${y + height}`;
+        } else {
+            // Middle row: full width rectangle
+            points = `${x},${y} ${x + width},${y} ${x + width},${y + height} ${x},${y + height}`;
+        }
+        const polygon = document.createElementNS('http://www.w3.org/2000/svg', 'polygon');
+        polygon.setAttribute('points', points);
+        return polygon;
+    }
+
+    addBookingText(svg, x, y, width, height, booking) {
+        // Guest name
+        const nameText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        nameText.setAttribute('x', x + width / 2);
+        nameText.setAttribute('y', y + height / 2 - 5);
+        nameText.setAttribute('class', 'booking-text');
+        nameText.textContent = booking.guest_first_name || 'Guest';
+        
+        // Guest count
+        const countText = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        countText.setAttribute('x', x + width / 2);
+        countText.setAttribute('y', y + height / 2 + 10);
+        countText.setAttribute('class', 'booking-guest-count');
+        countText.textContent = `${booking.number_of_guests || 1} guest${booking.number_of_guests > 1 ? 's' : ''}`;
+        
+        svg.appendChild(nameText);
+        svg.appendChild(countText);
+    }
+
+    getBookingPosition(date) {
+        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+        const startWeek = Math.floor((firstDay.getDay() + 6) % 7);
+        const dayOfMonth = date.getDate();
+        
+        if (date.getMonth() !== this.currentDate.getMonth() || date.getFullYear() !== this.currentDate.getFullYear()) {
+            return null;
+        }
+        
+        const cellIndex = startWeek + dayOfMonth - 1;
+        const col = cellIndex % 7;
+        const row = Math.floor(cellIndex / 7);
+        
+        return { startCol: col, startRow: row };
+    }
+
+    getChannelClass(channel) {
+        const channelMap = {
+            'airbnb': 'booking-airbnb',
+            'booking.com': 'booking-booking',
+            'direct': 'booking-direct'
+        };
+        return channelMap[channel?.toLowerCase()] || 'booking-other';
+    }
+
+    getFirstDayOfMonth() {
+        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+        return Math.floor((firstDay.getDay() + 6) % 7);
+    }
+
+    getLastDayOfMonth() {
+        const lastDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth() + 1, 0);
+        const firstDay = new Date(this.currentDate.getFullYear(), this.currentDate.getMonth(), 1);
+        const startWeek = Math.floor((firstDay.getDay() + 6) % 7);
+        return (startWeek + lastDay.getDate() - 1) % 7;
+    }
+
+    showBookingModal(booking) {
+        // Create modal content
+        const modal = document.createElement('div');
+        modal.style.cssText = `
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        `;
+        
+        const content = document.createElement('div');
+        content.style.cssText = `
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+        `;
+        
+        content.innerHTML = `
+            <h2 style="margin: 0 0 20px 0; color: #111827; font-size: 24px;">Booking Details</h2>
+            <div style="margin-bottom: 15px;">
+                <strong>Guest:</strong> ${booking.guest_name || booking.guest_first_name || 'N/A'}
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Phone:</strong> ${booking.guest_phone || 'N/A'}
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Guests:</strong> ${booking.number_of_guests || 1} (${booking.number_of_adults || 0} adults, ${booking.number_of_children || 0} children)
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Check-in:</strong> ${booking.check_in_date.toLocaleDateString()}
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Check-out:</strong> ${booking.check_out_date.toLocaleDateString()}
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Channel:</strong> ${booking.channel_type || booking.channel || 'N/A'}
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Status:</strong> ${booking.status || 'N/A'}
+            </div>
+            <div style="margin-bottom: 15px;">
+                <strong>Rate:</strong> ${booking.rates?.rate?.amount || 'N/A'} ${booking.rates?.rate?.currency || ''}
+            </div>
+            <button onclick="this.closest('.modal').remove()" style="
+                background: #667eea;
+                color: white;
+                border: none;
+                padding: 10px 20px;
+                border-radius: 8px;
+                cursor: pointer;
+                font-size: 16px;
+            ">Close</button>
+        `;
+        
+        modal.appendChild(content);
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+        
+        document.body.appendChild(modal);
+    }
+
+    // Navigation methods
+    previousMonth() {
+        this.currentDate.setMonth(this.currentDate.getMonth() - 1);
+        this.render();
+    }
+
+    nextMonth() {
+        this.currentDate.setMonth(this.currentDate.getMonth() + 1);
+        this.render();
+    }
+
+    goToToday() {
+        this.currentDate = new Date();
+        this.render();
+    }
+
+    showError(message) {
+        this.container.innerHTML = `
+            <div class="error">
+                <div>
+                    <h3>Error Loading Calendar</h3>
+                    <p>${message}</p>
+                    <button onclick="location.reload()" style="
+                        background: #667eea;
+                        color: white;
+                        border: none;
+                        padding: 10px 20px;
+                        border-radius: 8px;
+                        cursor: pointer;
+                        margin-top: 15px;
+                    ">Retry</button>
+                </div>
+            </div>
+        `;
+    }
+}
+
+// Initialize the calendar when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+    const calendar = new SVGCalendar('bm-calendar');
+    
+    // Add keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        switch(e.key) {
+            case 'ArrowLeft':
+                calendar.previousMonth();
+                break;
+            case 'ArrowRight':
+                calendar.nextMonth();
+                break;
+            case 'Home':
+                calendar.goToToday();
+                break;
+        }
     });
-  }
-
-  todayBtn.addEventListener('click', () => {
-    const now = new Date();
-    calendarMonth = now.getMonth();
-    calendarYear = now.getFullYear();
-    renderCalendar(calendarMonth, calendarYear);
-  });
-
-  // Initial render
-  fetchBookings();
+    
+    // Add navigation buttons (optional)
+    const navContainer = document.createElement('div');
+    navContainer.style.cssText = `
+        position: fixed;
+        top: 20px;
+        left: 20px;
+        display: flex;
+        gap: 10px;
+        z-index: 100;
+    `;
+    
+    navContainer.innerHTML = `
+        <button onclick="calendar.previousMonth()" style="
+            background: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        ">‹</button>
+        <button onclick="calendar.nextMonth()" style="
+            background: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        ">›</button>
+        <button onclick="calendar.goToToday()" style="
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+        ">Today</button>
+    `;
+    
+    document.body.appendChild(navContainer);
+    
+    // Make calendar globally accessible
+    window.calendar = calendar;
 }); 

@@ -8,6 +8,7 @@ const HOSTEX_API_KEY = process.env.HOSTEX_API_KEY || 'GO5Kxx5vb6SZPXrW7BAhJsomhx
 const HOSTEX_API_URL = 'https://api.hostex.io/v3/reservations';
 
 app.use(cors());
+app.use(express.static('.'));
 
 app.get('/api/bookings', async (req, res) => {
   try {
